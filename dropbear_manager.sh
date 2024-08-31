@@ -72,11 +72,11 @@ open_ports() {
 
 restart_dropbear() {
     echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
-    $(need_sudo) systemctl stop dropbear
+    $(need_sudo) service dropbear stop
     sleep 2
-    if ! $(need_sudo) systemctl start dropbear; then
+    if ! $(need_sudo) service dropbear start; then
         echo -e "${RED}Error al reiniciar Dropbear. Mostrando logs:${NC}"
-        $(need_sudo) systemctl status dropbear
+        $(need_sudo) service dropber status
         $(need_sudo) journalctl -xeu dropbear.service
     else
         echo -e "${GREEN}Dropbear reiniciado con éxito${NC}"
