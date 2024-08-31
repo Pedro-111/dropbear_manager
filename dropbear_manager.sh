@@ -29,6 +29,60 @@ validate_dropbear_config() {
         echo -e "${GREEN}Configuración corregida${NC}"
     fi
 }
+install_dropbear() {
+    echo -e "${YELLOW}Instalando Dropbear...${NC}"
+    $(need_sudo) apt-get update
+    $(need_sudo) apt-get install -y dropbear
+    
+    clean_dropbear_config
+    
+    echo -e "${YELLOW}Configurando puerto principal para Dropbear...${NC}"
+    read -p "Ingrese el puerto principal para Dropbear (no use el puerto 22): " dropbear_port
+    
+    while [ "$dropbear_port" = "22" ]; do
+        echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
+        read -p "Ingrese el puerto principal para Dropbear (no use el puerto 22): " dropbear_port
+    done
+    
+    # Modificar la configuración de Dropbear
+    $(need_sudo) sed -i "s/^DROPBEAR_PORT=/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
+    
+    restart_dropbear
+}
+
+open_ports() {
+    echo -e "${YELLOW}Abriendo puertos adicionales para Dropbear...${NC}"
+    read -p "Ingrese el puerto adicional que desea abrir: " port
+    
+    while [ "$port" = "22" ]; do
+        echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
+        read -p "Ingrese el puerto adicional que desea abrir: " port
+    done
+    
+    if lsof -i :$port > /dev/null; then
+        echo -e "${RED}El puerto $port ya está en uso${NC}"
+    else
+        current_args=$(grep "^DROPBEAR_EXTRA_ARGS=" /etc/default/dropbear | cut -d'"' -f2)
+        new_args="$current_args -p $port"
+        $(need_sudo) sed -i "s/^DROPBEAR_EXTRA_ARGS=.*/DROPBEAR_EXTRA_ARGS=\"$new_args\"/" /etc/default/dropbear
+        
+        restart_dropbear
+    fi
+}
+
+restart_dropbear() {
+    echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
+    $(need_sudo) systemctl stop dropbear
+    sleep 2
+    if ! $(need_sudo) systemctl start dropbear; then
+        echo -e "${RED}Error al reiniciar Dropbear. Mostrando logs:${NC}"
+        $(need_sudo) systemctl status dropbear
+        $(need_sudo) journalctl -xeu dropbear.service
+    else
+        echo -e "${GREEN}Dropbear reiniciado con éxito${NC}"
+    fi
+}
+
 clean_dropbear_config() {
     echo -e "${YELLOW}Limpiando configuración de Dropbear...${NC}"
     $(need_sudo) cp /etc/default/dropbear /etc/default/dropbear.bak
@@ -37,8 +91,6 @@ clean_dropbear_config() {
 # sourced by /etc/init.d/dropbear
 # installed at /etc/default/dropbear by the maintainer scripts
 
-# This is a POSIX shell fragment
-
 # Change to NO_START=0 to start dropbear at system boot
 NO_START=0
 
@@ -46,7 +98,7 @@ NO_START=0
 DROPBEAR_PORT=
 
 # any additional arguments for Dropbear
-DROPBEAR_EXTRA_ARGS=
+DROPBEAR_EXTRA_ARGS=""
 
 # specify an optional banner file containing a message to be
 # sent to clients before they connect, such as "/etc/issue.net"
@@ -66,61 +118,6 @@ DROPBEAR_BANNER=""
 DROPBEAR_RECEIVE_WINDOW=65536
 EOF
     echo -e "${GREEN}Configuración de Dropbear limpiada y reiniciada${NC}"
-}
-# Función para instalar Dropbear
-install_dropbear() {
-    echo -e "${YELLOW}Instalando Dropbear...${NC}"
-    $(need_sudo) apt-get update
-    $(need_sudo) apt-get install -y dropbear
-    
-    clean_dropbear_config
-    
-    echo -e "${YELLOW}Configurando puerto para Dropbear...${NC}"
-    read -p "Ingrese el puerto para Dropbear (no use el puerto 22): " dropbear_port
-    
-    while [ "$dropbear_port" = "22" ]; do
-        echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
-        read -p "Ingrese el puerto para Dropbear (no use el puerto 22): " dropbear_port
-    done
-    
-    # Modificar la configuración de Dropbear
-    $(need_sudo) sed -i "s/^DROPBEAR_PORT=/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
-    
-    echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
-    if ! $(need_sudo) systemctl restart dropbear; then
-        echo -e "${RED}Error al reiniciar Dropbear. Mostrando logs:${NC}"
-        $(need_sudo) systemctl status dropbear
-        $(need_sudo) journalctl -xeu dropbear.service
-    else
-        echo -e "${GREEN}Dropbear instalado y configurado con éxito en el puerto $dropbear_port${NC}"
-    fi
-}
-
-open_ports() {
-    echo -e "${YELLOW}Abriendo puertos adicionales para Dropbear...${NC}"
-    read -p "Ingrese el puerto adicional que desea abrir: " port
-    
-    while [ "$port" = "22" ]; do
-        echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
-        read -p "Ingrese el puerto adicional que desea abrir: " port
-    done
-    
-    if lsof -i :$port > /dev/null; then
-        echo -e "${RED}El puerto $port ya está en uso${NC}"
-    else
-        current_ports=$(grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2)
-        new_ports="$current_ports $port"
-        $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$new_ports/" /etc/default/dropbear
-        
-        echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
-        if ! $(need_sudo) systemctl restart dropbear; then
-            echo -e "${RED}Error al reiniciar Dropbear. Mostrando logs:${NC}"
-            $(need_sudo) systemctl status dropbear
-            $(need_sudo) journalctl -xeu dropbear.service
-        else
-            echo -e "${GREEN}Puerto $port abierto con éxito${NC}"
-        fi
-    fi
 }
 # Función para mostrar puertos en uso
 show_ports() {
