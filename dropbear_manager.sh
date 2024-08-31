@@ -20,6 +20,16 @@ need_sudo() {
     fi
 }
 
+# Función para validar la configuración de Dropbear
+validate_dropbear_config() {
+    if ! sh -n /etc/default/dropbear; then
+        echo -e "${RED}Error en la configuración de Dropbear. Corrigiendo...${NC}"
+        # Eliminar cualquier línea que comience con un número
+        $(need_sudo) sed -i '/^[0-9]/d' /etc/default/dropbear
+        echo -e "${GREEN}Configuración corregida${NC}"
+    fi
+}
+
 # Función para instalar Dropbear
 install_dropbear() {
     echo -e "${YELLOW}Instalando Dropbear...${NC}"
@@ -37,6 +47,8 @@ install_dropbear() {
     # Modificar la configuración de Dropbear
     $(need_sudo) sed -i "s/^NO_START=1/NO_START=0/" /etc/default/dropbear
     $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
+    
+    validate_dropbear_config
     
     echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
     if ! $(need_sudo) systemctl restart dropbear; then
@@ -63,6 +75,8 @@ open_ports() {
     else
         current_ports=$(grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2)
         $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$current_ports $port/" /etc/default/dropbear
+        
+        validate_dropbear_config
         
         echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
         if ! $(need_sudo) systemctl restart dropbear; then
