@@ -29,12 +29,51 @@ validate_dropbear_config() {
         echo -e "${GREEN}Configuración corregida${NC}"
     fi
 }
+clean_dropbear_config() {
+    echo -e "${YELLOW}Limpiando configuración de Dropbear...${NC}"
+    $(need_sudo) cp /etc/default/dropbear /etc/default/dropbear.bak
+    $(need_sudo) cat > /etc/default/dropbear << EOF
+# Defaults for dropbear initscript
+# sourced by /etc/init.d/dropbear
+# installed at /etc/default/dropbear by the maintainer scripts
 
+# This is a POSIX shell fragment
+
+# Change to NO_START=0 to start dropbear at system boot
+NO_START=0
+
+# the TCP port that Dropbear listens on
+DROPBEAR_PORT=
+
+# any additional arguments for Dropbear
+DROPBEAR_EXTRA_ARGS=
+
+# specify an optional banner file containing a message to be
+# sent to clients before they connect, such as "/etc/issue.net"
+DROPBEAR_BANNER=""
+
+# RSA hostkey file (default: /etc/dropbear/dropbear_rsa_host_key)
+#DROPBEAR_RSAKEY="/etc/dropbear/dropbear_rsa_host_key"
+
+# DSS hostkey file (default: /etc/dropbear/dropbear_dss_host_key)
+#DROPBEAR_DSSKEY="/etc/dropbear/dropbear_dss_host_key"
+
+# ECDSA hostkey file (default: /etc/dropbear/dropbear_ecdsa_host_key)
+#DROPBEAR_ECDSAKEY="/etc/dropbear/dropbear_ecdsa_host_key"
+
+# Receive window size - this is a tradeoff between memory and
+# network performance
+DROPBEAR_RECEIVE_WINDOW=65536
+EOF
+    echo -e "${GREEN}Configuración de Dropbear limpiada y reiniciada${NC}"
+}
 # Función para instalar Dropbear
 install_dropbear() {
     echo -e "${YELLOW}Instalando Dropbear...${NC}"
     $(need_sudo) apt-get update
     $(need_sudo) apt-get install -y dropbear
+    
+    clean_dropbear_config
     
     echo -e "${YELLOW}Configurando puerto para Dropbear...${NC}"
     read -p "Ingrese el puerto para Dropbear (no use el puerto 22): " dropbear_port
@@ -45,10 +84,7 @@ install_dropbear() {
     done
     
     # Modificar la configuración de Dropbear
-    $(need_sudo) sed -i "s/^NO_START=1/NO_START=0/" /etc/default/dropbear
-    $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
-    
-    validate_dropbear_config
+    $(need_sudo) sed -i "s/^DROPBEAR_PORT=/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
     
     echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
     if ! $(need_sudo) systemctl restart dropbear; then
@@ -60,7 +96,6 @@ install_dropbear() {
     fi
 }
 
-# Función para abrir puertos
 open_ports() {
     echo -e "${YELLOW}Abriendo puertos adicionales para Dropbear...${NC}"
     read -p "Ingrese el puerto adicional que desea abrir: " port
@@ -74,9 +109,8 @@ open_ports() {
         echo -e "${RED}El puerto $port ya está en uso${NC}"
     else
         current_ports=$(grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2)
-        $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$current_ports $port/" /etc/default/dropbear
-        
-        validate_dropbear_config
+        new_ports="$current_ports $port"
+        $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$new_ports/" /etc/default/dropbear
         
         echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
         if ! $(need_sudo) systemctl restart dropbear; then
@@ -142,8 +176,9 @@ while true; do
     echo "3. Mostrar puertos en uso"
     echo "4. Crear usuario temporal"
     echo "5. Actualizar script"
-    echo "6. Desinstalar"
-    echo "7. Salir"
+    echo "6. Limpiar configuración de Dropbear"
+    echo "7. Desinstalar"
+    echo "8. Salir"
     
     read -p "Seleccione una opción: " choice
     
@@ -153,8 +188,9 @@ while true; do
         3) show_ports ;;
         4) create_user ;;
         5) update_script ;;
-        6) uninstall; exit 0 ;;
-        7) exit 0 ;;
+        6) clean_dropbear_config ;;
+        7) uninstall; exit 0 ;;
+        8) exit 0 ;;
         *) echo -e "${RED}Opción inválida${NC}" ;;
     esac
 done
