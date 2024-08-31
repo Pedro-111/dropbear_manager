@@ -146,8 +146,32 @@ create_user() {
 # Función para actualizar el script
 update_script() {
     echo -e "${YELLOW}Actualizando el script...${NC}"
-    # Aquí iría la lógica para actualizar el script desde un repositorio
-    echo -e "${GREEN}Script actualizado con éxito${NC}"
+    
+    # URL del script en GitHub
+    SCRIPT_URL="https://raw.githubusercontent.com/Pedro-111/dropbear_manager/master/dropbear_manager.sh"
+    
+    # Nombre del script actual
+    CURRENT_SCRIPT="$0"
+    
+    # Descargar el nuevo script
+    if curl -s "$SCRIPT_URL" -o "${CURRENT_SCRIPT}.tmp"; then
+        # Verificar si la descarga fue exitosa
+        if [ -s "${CURRENT_SCRIPT}.tmp" ]; then
+            # Hacer el nuevo script ejecutable
+            chmod +x "${CURRENT_SCRIPT}.tmp"
+            
+            # Reemplazar el script actual con el nuevo
+            mv "${CURRENT_SCRIPT}.tmp" "$CURRENT_SCRIPT"
+            
+            echo -e "${GREEN}Script actualizado con éxito. Por favor, reinicie el script.${NC}"
+            exit 0
+        else
+            echo -e "${RED}Error: El archivo descargado está vacío.${NC}"
+            rm -f "${CURRENT_SCRIPT}.tmp"
+        fi
+    else
+        echo -e "${RED}Error al descargar el script. Por favor, verifica tu conexión a internet.${NC}"
+    fi
 }
 
 # Función para desinstalar
