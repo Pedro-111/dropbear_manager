@@ -26,27 +26,40 @@ install_dropbear() {
     $(need_sudo) apt-get update
     $(need_sudo) apt-get install -y dropbear
     
-    echo -e "${YELLOW}Configurando puerto adicional para Dropbear...${NC}"
-    read -p "Ingrese el puerto adicional para Dropbear (además del 22): " additional_port
+    echo -e "${YELLOW}Configurando puerto para Dropbear...${NC}"
+    read -p "Ingrese el puerto para Dropbear (no use el puerto 22): " dropbear_port
+    
+    # Verificar que el puerto no sea 22
+    while [ "$dropbear_port" = "22" ]; do
+        echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
+        read -p "Ingrese el puerto para Dropbear (no use el puerto 22): " dropbear_port
+    done
     
     # Modificar la configuración de Dropbear
     $(need_sudo) sed -i "s/^NO_START=1/NO_START=0/" /etc/default/dropbear
-    $(need_sudo) sed -i "s/^DROPBEAR_PORT=22/DROPBEAR_PORT=22 $additional_port/" /etc/default/dropbear
+    $(need_sudo) sed -i "s/^DROPBEAR_PORT=22/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
     
     $(need_sudo) systemctl restart dropbear
-    echo -e "${GREEN}Dropbear instalado y configurado con éxito${NC}"
+    echo -e "${GREEN}Dropbear instalado y configurado con éxito en el puerto $dropbear_port${NC}"
 }
 
 # Función para abrir puertos
 open_ports() {
-    echo -e "${YELLOW}Abriendo puertos para Dropbear...${NC}"
-    read -p "Ingrese el puerto que desea abrir: " port
+    echo -e "${YELLOW}Abriendo puertos adicionales para Dropbear...${NC}"
+    read -p "Ingrese el puerto adicional que desea abrir: " port
+    
+    # Verificar que el puerto no sea 22
+    while [ "$port" = "22" ]; do
+        echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
+        read -p "Ingrese el puerto adicional que desea abrir: " port
+    done
     
     # Verificar si el puerto ya está en uso
     if lsof -i :$port > /dev/null; then
         echo -e "${RED}El puerto $port ya está en uso${NC}"
     else
-        $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/& $port/" /etc/default/dropbear
+        current_ports=$(grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2)
+        $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$current_ports $port/" /etc/default/dropbear
         $(need_sudo) systemctl restart dropbear
         echo -e "${GREEN}Puerto $port abierto con éxito${NC}"
     fi
@@ -97,7 +110,7 @@ uninstall() {
 while true; do
     echo -e "\n${BLUE}=== Menú de Dropbear ===${NC}"
     echo "1. Instalar Dropbear"
-    echo "2. Abrir puertos"
+    echo "2. Abrir puertos adicionales"
     echo "3. Mostrar puertos en uso"
     echo "4. Crear usuario temporal"
     echo "5. Actualizar script"
