@@ -189,14 +189,100 @@ uninstall() {
     rm "$0"
     echo -e "${GREEN}Script eliminado con éxito${NC}"
 }
+manage_users() {
+    while true; do
+        echo -e "\n${BLUE}=== Gestión de Usuarios ===${NC}"
+        echo "1. Crear usuario"
+        echo "2. Listar usuarios"
+        echo "3. Ampliar días de existencia de un usuario"
+        echo "4. Disminuir días de existencia de un usuario"
+        echo "5. Actualizar contraseña de un usuario"
+        echo "6. Eliminar usuario"
+        echo "7. Volver al menú principal"
+        
+        read -p "Seleccione una opción: " user_choice
+        
+        case $user_choice in
+            1) create_user ;;
+            2) list_users ;;
+            3) extend_user_days ;;
+            4) reduce_user_days ;;
+            5) update_user_password ;;
+            6) delete_user ;;
+            7) break ;;
+            *) echo -e "${RED}Opción inválida${NC}" ;;
+        esac
+    done
+}
 
+create_user() {
+    echo -e "${YELLOW}Creando usuario temporal...${NC}"
+    read -p "Ingrese el nombre de usuario: " username
+    read -p "Ingrese el número de días de validez: " days
+    
+    $(need_sudo) useradd -m -s /bin/false -e $(date -d "+$days days" +%Y-%m-%d) $username
+    $(need_sudo) passwd $username
+    echo -e "${GREEN}Usuario $username creado con éxito. Expira en $days días${NC}"
+}
+
+list_users() {
+    echo -e "${YELLOW}Lista de usuarios creados:${NC}"
+    $(need_sudo) awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd
+}
+
+extend_user_days() {
+    read -p "Ingrese el nombre de usuario: " username
+    read -p "Ingrese el número de días a añadir: " days
+    
+    if id "$username" >/dev/null 2>&1; then
+        new_expiry=$(date -d "$($(need_sudo) chage -l $username | grep 'Account expires' | cut -d: -f2) +$days days" +%Y-%m-%d)
+        $(need_sudo) chage -E $new_expiry $username
+        echo -e "${GREEN}Se han añadido $days días a la cuenta de $username${NC}"
+    else
+        echo -e "${RED}El usuario $username no existe${NC}"
+    fi
+}
+
+reduce_user_days() {
+    read -p "Ingrese el nombre de usuario: " username
+    read -p "Ingrese el número de días a reducir: " days
+    
+    if id "$username" >/dev/null 2>&1; then
+        new_expiry=$(date -d "$($(need_sudo) chage -l $username | grep 'Account expires' | cut -d: -f2) -$days days" +%Y-%m-%d)
+        $(need_sudo) chage -E $new_expiry $username
+        echo -e "${GREEN}Se han reducido $days días de la cuenta de $username${NC}"
+    else
+        echo -e "${RED}El usuario $username no existe${NC}"
+    fi
+}
+
+update_user_password() {
+    read -p "Ingrese el nombre de usuario: " username
+    
+    if id "$username" >/dev/null 2>&1; then
+        $(need_sudo) passwd $username
+    else
+        echo -e "${RED}El usuario $username no existe${NC}"
+    fi
+}
+
+delete_user() {
+    read -p "Ingrese el nombre de usuario a eliminar: " username
+    
+    if id "$username" >/dev/null 2>&1; then
+        $(need_sudo) userdel -r $username
+        echo -e "${GREEN}Usuario $username eliminado con éxito${NC}"
+    else
+        echo -e "${RED}El usuario $username no existe${NC}"
+    fi
+}
 # Menú principal
 while true; do
     echo -e "\n${BLUE}=== Menú de Dropbear ===${NC}"
     echo "1. Instalar Dropbear"
     echo "2. Abrir puertos adicionales"
     echo "3. Mostrar puertos en uso"
-    echo "4. Crear usuario temporal"
+    echo "4. Gestionar usuarios"
     echo "5. Actualizar script"
     echo "6. Limpiar configuración de Dropbear"
     echo "7. Desinstalar"
@@ -208,7 +294,7 @@ while true; do
         1) install_dropbear ;;
         2) open_ports ;;
         3) show_ports ;;
-        4) create_user ;;
+        4) manage_users ;;
         5) update_script ;;
         6) clean_dropbear_config ;;
         7) uninstall; exit 0 ;;
