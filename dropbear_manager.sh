@@ -36,7 +36,7 @@ install_dropbear() {
     
     # Modificar la configuración de Dropbear
     $(need_sudo) sed -i "s/^NO_START=1/NO_START=0/" /etc/default/dropbear
-    $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
+    $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=\"$dropbear_port\"/" /etc/default/dropbear
     
     echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
     if ! $(need_sudo) systemctl restart dropbear; then
@@ -62,7 +62,7 @@ open_ports() {
         echo -e "${RED}El puerto $port ya está en uso${NC}"
     else
         current_ports=$(grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2)
-        $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$current_ports $port/" /etc/default/dropbear
+        $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=\"$current_ports $port\"/" /etc/default/dropbear
         
         echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
         if ! $(need_sudo) systemctl restart dropbear; then
@@ -74,12 +74,12 @@ open_ports() {
         fi
     fi
 }
+
 # Función para mostrar puertos en uso
 show_ports() {
-    echo -e "${BLUE}Puertos Dropbear en uso:${NC}"
-    echo -e "PORT\tSTATE"
-    netstat -tln | grep dropbear | awk '{print $4}' | cut -d':' -f2 | sort -n | uniq | while read port; do
-        echo -e "$port\tOPEN"
+    echo -e "${BLUE}Puertos Dropbear configurados:${NC}"
+    grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2 | tr ' ' '\n' | sort -n | uniq | while read port; do
+        echo -e "$port\tCONFIGURADO"
     done
 }
 
@@ -88,8 +88,14 @@ create_user() {
     echo -e "${YELLOW}Creando usuario temporal...${NC}"
     read -p "Ingrese el nombre de usuario: " username
     read -p "Ingrese el número de días de validez: " days
-    
+
+    # Crear usuario con shell nula y fecha de expiración
     $(need_sudo) useradd -m -s /bin/false -e $(date -d "+$days days" +%Y-%m-%d) $username
+
+    # Solicitar y asignar contraseña
+    echo -e "${YELLOW}Ingrese la contraseña para el usuario $username:${NC}"
+    $(need_sudo) passwd $username
+    
     echo -e "${GREEN}Usuario $username creado con éxito. Expira en $days días${NC}"
 }
 
