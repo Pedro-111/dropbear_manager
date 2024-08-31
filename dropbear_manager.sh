@@ -29,7 +29,6 @@ install_dropbear() {
     echo -e "${YELLOW}Configurando puerto para Dropbear...${NC}"
     read -p "Ingrese el puerto para Dropbear (no use el puerto 22): " dropbear_port
     
-    # Verificar que el puerto no sea 22
     while [ "$dropbear_port" = "22" ]; do
         echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
         read -p "Ingrese el puerto para Dropbear (no use el puerto 22): " dropbear_port
@@ -37,10 +36,16 @@ install_dropbear() {
     
     # Modificar la configuración de Dropbear
     $(need_sudo) sed -i "s/^NO_START=1/NO_START=0/" /etc/default/dropbear
-    $(need_sudo) sed -i "s/^DROPBEAR_PORT=22/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
+    $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
     
-    $(need_sudo) systemctl restart dropbear
-    echo -e "${GREEN}Dropbear instalado y configurado con éxito en el puerto $dropbear_port${NC}"
+    echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
+    if ! $(need_sudo) systemctl restart dropbear; then
+        echo -e "${RED}Error al reiniciar Dropbear. Mostrando logs:${NC}"
+        $(need_sudo) systemctl status dropbear
+        $(need_sudo) journalctl -xeu dropbear.service
+    else
+        echo -e "${GREEN}Dropbear instalado y configurado con éxito en el puerto $dropbear_port${NC}"
+    fi
 }
 
 # Función para abrir puertos
@@ -48,23 +53,27 @@ open_ports() {
     echo -e "${YELLOW}Abriendo puertos adicionales para Dropbear...${NC}"
     read -p "Ingrese el puerto adicional que desea abrir: " port
     
-    # Verificar que el puerto no sea 22
     while [ "$port" = "22" ]; do
         echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
         read -p "Ingrese el puerto adicional que desea abrir: " port
     done
     
-    # Verificar si el puerto ya está en uso
     if lsof -i :$port > /dev/null; then
         echo -e "${RED}El puerto $port ya está en uso${NC}"
     else
         current_ports=$(grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2)
         $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$current_ports $port/" /etc/default/dropbear
-        $(need_sudo) systemctl restart dropbear
-        echo -e "${GREEN}Puerto $port abierto con éxito${NC}"
+        
+        echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
+        if ! $(need_sudo) systemctl restart dropbear; then
+            echo -e "${RED}Error al reiniciar Dropbear. Mostrando logs:${NC}"
+            $(need_sudo) systemctl status dropbear
+            $(need_sudo) journalctl -xeu dropbear.service
+        else
+            echo -e "${GREEN}Puerto $port abierto con éxito${NC}"
+        fi
     fi
 }
-
 # Función para mostrar puertos en uso
 show_ports() {
     echo -e "${BLUE}Puertos Dropbear en uso:${NC}"
