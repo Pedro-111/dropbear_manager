@@ -121,9 +121,10 @@ EOF
 }
 # Función para mostrar puertos en uso
 show_ports() {
-    echo -e "${BLUE}Puertos Dropbear configurados:${NC}"
-    grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2 | tr ' ' '\n' | sort -n | uniq | while read port; do
-        echo -e "$port\tCONFIGURADO"
+    echo -e "${BLUE}Puertos Dropbear en uso:${NC}"
+    echo -e "PORT\tSTATE"
+    netstat -tln | grep dropbear | awk '{print $4}' | cut -d':' -f2 | sort -n | uniq | while read port; do
+        echo -e "$port\tOPEN"
     done
 }
 
