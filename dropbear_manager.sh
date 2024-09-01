@@ -299,30 +299,19 @@ create_user() {
 }
 
 # Función para listar usuarios y mostrar los días restantes antes de la expiración
-list_users() {
-    echo -e "USUARIO\t\tDÍAS RESTANTES"
-    echo -e "-------\t\t--------------"
-    
-    # Filtrar usuarios con UID >= 1000
-    for user in $(awk -F':' '{ if ($3 >= 1000) print $1 }' /etc/passwd); do
-        expire_date=$(chage -l $user | grep "Account expires" | awk -F': ' '{ print $2 }')
-        
-        if [ "$expire_date" == "never" ]; then
-            days_left="Nunca expira"
-        elif [ -z "$expire_date" ]; then
-            days_left="Desconocido"
+listar_usuarios() {
+    echo -e "USUARIO         DÍAS RESTANTES"
+    echo -e "-------         --------------"
+    for usuario in $(cut -f1 -d: /etc/passwd); do
+        fecha_expiracion=$(chage -l "$usuario" | grep "Account expires" | awk -F: '{print $2}' | xargs)
+        if [ "$fecha_expiracion" == "never" ]; then
+            dias_restantes="Nunca"
         else
-            expire_timestamp=$(date -d "$expire_date" +%s 2>/dev/null)
-            current_timestamp=$(date +%s)
-            days_left=$(( ($expire_timestamp - $current_timestamp) / 86400 ))
-
-            if [ "$days_left" -lt "0" ]; then
-                days_left="Expirado"
-            fi
+            fecha_expiracion_timestamp=$(date -d "$fecha_expiracion" +%s)
+            fecha_actual_timestamp=$(date +%s)
+            dias_restantes=$(( (fecha_expiracion_timestamp - fecha_actual_timestamp) / 86400 ))
         fi
-        
-        # Mostrar el usuario y los días restantes
-        echo -e "$user\t\t$days_left"
+        echo -e "$usuario          $dias_restantes"
     done
 }
 
