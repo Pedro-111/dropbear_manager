@@ -110,11 +110,22 @@ close_port() {
     current_port=$(grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2)
     current_args=$(grep "^DROPBEAR_EXTRA_ARGS=" /etc/default/dropbear | cut -d'"' -f2)
     
-    # Cerrar el puerto
     if [ "$current_port" = "$port" ]; then
-        # Si es el puerto principal, lo cambiamos a un valor vacío
-        $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=/" /etc/default/dropbear
-        echo -e "${GREEN}Puerto principal $port cerrado exitosamente${NC}"
+        echo -e "${RED}El puerto $port es el puerto principal de Dropbear y no se puede cerrar.${NC}"
+        read -p "¿Desea actualizar el puerto principal? (s/n): " choice
+        if [ "$choice" = "s" ]; then
+            read -p "Ingrese el nuevo puerto principal: " new_port
+            
+            if ! [[ "$new_port" =~ ^[0-9]+$ ]] || [ "$new_port" -lt 1 ] || [ "$new_port" -gt 65535 ]; then
+                echo -e "${RED}Nuevo puerto inválido. Debe ser un número entre 1 y 65535.${NC}"
+                return
+            fi
+            
+            $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=$new_port/" /etc/default/dropbear
+            echo -e "${GREEN}Puerto principal actualizado a $new_port exitosamente${NC}"
+            restart_dropbear
+        fi
+        return
     else
         # Si es un puerto adicional, lo removemos de DROPBEAR_EXTRA_ARGS
         new_args=$(echo $current_args | sed "s/-p $port//g")
