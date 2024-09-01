@@ -292,18 +292,21 @@ create_user() {
     echo -e "${GREEN}Usuario $username creado con éxito. Expira en $days días${NC}"
 }
 
+# Función para listar usuarios y mostrar los días restantes antes de la expiración
 list_users() {
     echo -e "USUARIO\t\tDÍAS RESTANTES"
     echo -e "-------\t\t--------------"
     
+    # Filtrar usuarios con UID >= 1000
     for user in $(awk -F':' '{ if ($3 >= 1000) print $1 }' /etc/passwd); do
-        # Verificar si el usuario tiene una fecha de expiración
         expire_date=$(chage -l $user | grep "Account expires" | awk -F': ' '{ print $2 }')
         
         if [ "$expire_date" == "never" ]; then
             days_left="Nunca expira"
+        elif [ -z "$expire_date" ]; then
+            days_left="Desconocido"
         else
-            expire_timestamp=$(date -d "$expire_date" +%s)
+            expire_timestamp=$(date -d "$expire_date" +%s 2>/dev/null)
             current_timestamp=$(date +%s)
             days_left=$(( ($expire_timestamp - $current_timestamp) / 86400 ))
 
@@ -315,6 +318,32 @@ list_users() {
         # Mostrar el usuario y los días restantes
         echo -e "$user\t\t$days_left"
     done
+}
+
+# Menu de gestion de usuarios
+manage_users_menu() {
+    clear
+    echo "=== Gestión de Usuarios ==="
+    echo "1. Crear usuario"
+    echo "2. Listar usuarios"
+    echo "3. Ampliar días de existencia de un usuario"
+    echo "4. Disminuir días de existencia de un usuario"
+    echo "5. Actualizar contraseña de un usuario"
+    echo "6. Eliminar usuario"
+    echo "7. Volver al menú principal"
+    echo -n "Seleccione una opción: "
+    read option
+
+    case $option in
+        1) create_user ;;
+        2) list_users ;;
+        3) extend_user_days ;;
+        4) reduce_user_days ;;
+        5) update_user_password ;;
+        6) delete_user ;;
+        7) main_menu ;;
+        *) echo "Opción no válida"; sleep 2; manage_users_menu ;;
+    esac
 }
 
 extend_user_days() {
