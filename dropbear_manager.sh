@@ -282,17 +282,35 @@ update_script() {
 
 # Función para desinstalar
 uninstall() {
-    echo -e "${RED}Desinstalando...${NC}"
-    read -p "¿Desea desinstalar solo el script o también Dropbear? (script/dropbear): " choice
+    echo -e "${YELLOW}=== Desinstalación ===${NC}"
     
-    if [ "$choice" = "dropbear" ]; then
+    # Opción para desinstalar el script
+    read -p "¿Desea desinstalar el script? (s/n): " uninstall_script
+    if [[ "$uninstall_script" =~ ^[Ss]$ ]]; then
+        echo -e "${RED}Desinstalando el script...${NC}"
+        rm "$0"
+        echo -e "${GREEN}Script eliminado con éxito${NC}"
+    fi
+    
+    # Opción para desinstalar Dropbear
+    read -p "¿Desea desinstalar Dropbear? (s/n): " uninstall_dropbear
+    if [[ "$uninstall_dropbear" =~ ^[Ss]$ ]]; then
+        echo -e "${RED}Desinstalando Dropbear...${NC}"
         $(need_sudo) apt-get remove --purge -y dropbear
         echo -e "${GREEN}Dropbear desinstalado con éxito${NC}"
     fi
     
-    # Eliminar el script
-    rm "$0"
-    echo -e "${GREEN}Script eliminado con éxito${NC}"
+    # Si ambos fueron desinstalados, salir del script
+    if [[ "$uninstall_script" =~ ^[Ss]$ ]] && [[ "$uninstall_dropbear" =~ ^[Ss]$ ]]; then
+        echo -e "${YELLOW}Desinstalación completa. Saliendo...${NC}"
+        exit 0
+    elif [[ "$uninstall_script" =~ ^[Ss]$ ]]; then
+        echo -e "${YELLOW}Script desinstalado. Saliendo...${NC}"
+        exit 0
+    fi
+    
+    # Si solo se desinstaló Dropbear, volver al menú principal
+    echo -e "${YELLOW}Volviendo al menú principal...${NC}"
 }
 manage_users() {
     while true; do
