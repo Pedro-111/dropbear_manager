@@ -168,10 +168,14 @@ show_ports() {
     echo -e "PORT\tSTATE"
 
     # Extraer el puerto principal
-    main_port=$(grep -oP '^DROPBEAR_PORT=\K[0-9]+' /etc/default/dropbear)
+    main_port=$(awk -F= '/^DROPBEAR_PORT=/ {print $2}' /etc/default/dropbear)
     
     # Extraer los puertos adicionales de DROPBEAR_EXTRA_ARGS
-    extra_ports=$(grep -oP 'DROPBEAR_EXTRA_ARGS="[^"]*"' /etc/default/dropbear | grep -oP '-p \K[0-9]+' | sort -n | uniq)
+    extra_ports=$(awk -F'-p ' '/DROPBEAR_EXTRA_ARGS=/ {
+        for (i=2; i<=NF; i++) {
+            print $i
+        }
+    }' /etc/default/dropbear | cut -d' ' -f1 | sort -n | uniq)
     
     # Mostrar el puerto principal
     if [ -n "$main_port" ]; then
@@ -190,7 +194,6 @@ show_ports() {
         echo -e "${YELLOW}No se encontraron puertos configurados para Dropbear.${NC}"
     fi
 }
-
 
 # Función para crear usuarios temporales
 create_user() {
