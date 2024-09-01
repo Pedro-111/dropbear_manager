@@ -91,7 +91,33 @@ open_ports() {
         restart_dropbear
     fi
 }
-
+close_port() {
+    echo -e "${YELLOW}Cerrando puerto para Dropbear...${NC}"
+    read -p "Ingrese el puerto que desea cerrar: " port
+    
+    # Verificar si el puerto está en uso por Dropbear
+    if ! ss -tuln | grep dropbear | grep ":$port " > /dev/null; then
+        echo -e "${RED}El puerto $port no está en uso por Dropbear${NC}"
+        return
+    fi
+    
+    # Obtener la configuración actual
+    current_port=$(grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2)
+    current_args=$(grep "^DROPBEAR_EXTRA_ARGS=" /etc/default/dropbear | cut -d'"' -f2)
+    
+    # Cerrar el puerto
+    if [ "$current_port" = "$port" ]; then
+        # Si es el puerto principal, lo cambiamos a un valor vacío
+        $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=/" /etc/default/dropbear
+    else
+        # Si es un puerto adicional, lo removemos de DROPBEAR_EXTRA_ARGS
+        new_args=$(echo $current_args | sed "s/-p $port//g")
+        $(need_sudo) sed -i "s/^DROPBEAR_EXTRA_ARGS=.*/DROPBEAR_EXTRA_ARGS=\"$new_args\"/" /etc/default/dropbear
+    fi
+    
+    restart_dropbear
+    echo -e "${GREEN}Puerto $port cerrado exitosamente${NC}"
+}
 restart_dropbear() {
     echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
     $(need_sudo) service dropbear stop
@@ -380,24 +406,26 @@ while true; do
     echo -e "\n${BLUE}=== Menú de Dropbear ===${NC}"
     echo "1. Instalar Dropbear"
     echo "2. Abrir puertos adicionales"
-    echo "3. Mostrar puertos en uso"
-    echo "4. Gestionar usuarios"
-    echo "5. Actualizar script"
-    echo "6. Limpiar configuración de Dropbear"
-    echo "7. Desinstalar"
-    echo "8. Salir"
+    echo "3. Cerrar puertos"
+    echo "4. Mostrar puertos en uso"
+    echo "5. Gestionar usuarios"
+    echo "6. Actualizar script"
+    echo "7. Limpiar configuración de Dropbear"
+    echo "8. Desinstalar"
+    echo "9. Salir"
     
     read -p "Seleccione una opción: " choice
     
     case $choice in
         1) install_dropbear ;;
         2) open_ports ;;
-        3) show_ports ;;
-        4) manage_users ;;
-        5) update_script ;;
-        6) clean_dropbear_config ;;
-        7) uninstall; exit 0 ;;
-        8) exit 0 ;;
+        3) close_port ;;
+        4) show_ports ;;
+        5) manage_users ;;
+        6) update_script ;;
+        7) clean_dropbear_config ;;
+        8) uninstall; exit 0 ;;
+        9) exit 0 ;;
         *) echo -e "${RED}Opción inválida${NC}" ;;
     esac
 done
