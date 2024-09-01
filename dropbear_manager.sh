@@ -299,7 +299,7 @@ create_user() {
 }
 
 # Función para listar usuarios y mostrar los días restantes antes de la expiración
-listar_usuarios() {
+list_users() {
     echo -e "USUARIO         DÍAS RESTANTES"
     echo -e "-------         --------------"
     for usuario in $(cut -f1 -d: /etc/passwd); do
