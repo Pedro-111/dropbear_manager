@@ -19,6 +19,13 @@ need_sudo() {
         echo "sudo"
     fi
 }
+check_dependencies() {
+    if ! command -v netstat &> /dev/null; then
+        echo "netstat no está instalado. Instalando..."
+        sudo apt-get install net-tools -y
+    fi
+}
+check_dependencies
 
 # Función para validar la configuración de Dropbear
 validate_dropbear_config() {
@@ -56,7 +63,10 @@ install_dropbear() {
 open_ports() {
     echo -e "${YELLOW}Abriendo puertos adicionales para Dropbear...${NC}"
     read -p "Ingrese el puerto adicional que desea abrir: " port
-    
+    if netstat -tuln | grep ":$port " > /dev/null; then
+        echo "El puerto $port ya está en uso por otro proceso. Por favor, elija otro puerto."
+        return
+    fi
     while [ "$port" = "22" ]; do
         echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
         read -p "Ingrese el puerto adicional que desea abrir: " port
