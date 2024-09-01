@@ -298,21 +298,9 @@ create_user() {
     echo -e "${GREEN}Usuario $username creado con éxito. Expira en $days días${NC}"
 }
 
-# Función para listar usuarios y mostrar los días restantes antes de la expiración
 list_users() {
-    echo -e "USUARIO         DÍAS RESTANTES"
-    echo -e "-------         --------------"
-    for usuario in $(cut -f1 -d: /etc/passwd); do
-        fecha_expiracion=$(chage -l "$usuario" | grep "Account expires" | awk -F: '{print $2}' | xargs)
-        if [ "$fecha_expiracion" == "never" ]; then
-            dias_restantes="Nunca"
-        else
-            fecha_expiracion_timestamp=$(date -d "$fecha_expiracion" +%s)
-            fecha_actual_timestamp=$(date +%s)
-            dias_restantes=$(( (fecha_expiracion_timestamp - fecha_actual_timestamp) / 86400 ))
-        fi
-        echo -e "$usuario          $dias_restantes"
-    done
+    echo -e "${YELLOW}Lista de usuarios creados:${NC}"
+    $(need_sudo) awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd
 }
 
 # Menu de gestion de usuarios
