@@ -296,7 +296,7 @@ list_users() {
     echo -e "USUARIO\t\tDÍAS RESTANTES"
     echo -e "-------\t\t--------------"
     
-    for user in $(awk -F':' '{ print $1 }' /etc/passwd); do
+    for user in $(awk -F':' '{ if ($3 >= 1000) print $1 }' /etc/passwd); do
         # Verificar si el usuario tiene una fecha de expiración
         expire_date=$(chage -l $user | grep "Account expires" | awk -F': ' '{ print $2 }')
         
