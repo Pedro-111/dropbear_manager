@@ -95,9 +95,9 @@ close_port() {
     echo -e "${YELLOW}Cerrando puerto para Dropbear...${NC}"
     read -p "Ingrese el puerto que desea cerrar: " port
     
-    # Verificar si el puerto está configurado
-    if ! grep -qE "DROPBEAR_PORT=$port|DROPBEAR_EXTRA_ARGS=.*-p $port" /etc/default/dropbear; then
-        echo -e "${RED}El puerto $port no está configurado para Dropbear${NC}"
+    # Verificar si el puerto está en uso por Dropbear
+    if ! netstat -tuln | grep dropbear | grep ":$port " > /dev/null; then
+        echo -e "${RED}El puerto $port no está en uso por Dropbear${NC}"
         return
     fi
     
