@@ -149,6 +149,7 @@ DROPBEAR_RECEIVE_WINDOW=65536
 EOF
     echo -e "${GREEN}Configuración de Dropbear limpiada y reiniciada${NC}"
 }
+
 # Función para mostrar puertos en uso
 show_ports() {
     # Verificar si Dropbear está instalado
@@ -156,14 +157,20 @@ show_ports() {
         echo -e "${YELLOW}Dropbear no está instalado. Por favor, instálelo primero.${NC}"
         exit 1
     fi
-    echo -e "${BLUE}Puertos Dropbear en uso:${NC}"
-    echo -e "PORT\tSTATE"
-    ss -tuln | grep dropbear | awk '{print $5}' | cut -d':' -f2 | sort -n | uniq | while read port; do
-        echo -e "$port\tOPEN"
-    done
     
-    if [ -z "$(ss -tuln | grep dropbear)" ]; then
+    echo -e "${BLUE}Puertos Dropbear en uso:${NC}"
+    
+    # Obtener los puertos usados por Dropbear
+    ports=$(ss -tuln | grep dropbear | awk '{print $5}' | cut -d':' -f2 | sort -n | uniq)
+
+    # Verificar si hay puertos en uso
+    if [ -z "$ports" ]; then
         echo -e "${YELLOW}No se encontraron puertos activos para Dropbear${NC}"
+    else
+        echo -e "PORT\tSTATE"
+        echo "$ports" | while read port; do
+            echo -e "$port\tOPEN"
+        done
     fi
 }
 
