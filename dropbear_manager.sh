@@ -95,6 +95,11 @@ close_port() {
     echo -e "${YELLOW}Cerrando puerto para Dropbear...${NC}"
     read -p "Ingrese el puerto que desea cerrar: " port
     
+    if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        echo -e "${RED}Puerto inválido. Debe ser un número entre 1 y 65535.${NC}"
+        return
+    }
+    
     # Verificar si el puerto está configurado
     if ! grep -qE "DROPBEAR_PORT=$port|DROPBEAR_EXTRA_ARGS=.*-p $port" /etc/default/dropbear; then
         echo -e "${RED}El puerto $port no está configurado para Dropbear${NC}"
@@ -112,7 +117,7 @@ close_port() {
         echo -e "${GREEN}Puerto principal $port cerrado exitosamente${NC}"
     else
         # Si es un puerto adicional, lo removemos de DROPBEAR_EXTRA_ARGS
-        new_args=$(echo $current_args | sed "s/ -p $port//g")
+        new_args=$(echo $current_args | sed "s/-p $port//g")
         $(need_sudo) sed -i "s/^DROPBEAR_EXTRA_ARGS=.*/DROPBEAR_EXTRA_ARGS=\"$new_args\"/" /etc/default/dropbear
         echo -e "${GREEN}Puerto adicional $port cerrado exitosamente${NC}"
     fi
