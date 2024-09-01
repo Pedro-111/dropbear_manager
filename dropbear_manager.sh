@@ -175,7 +175,7 @@ show_ports() {
         for (i=2; i<=NF; i++) {
             print $i
         }
-    }' /etc/default/dropbear | cut -d' ' -f1 | sort -n | uniq)
+    }' /etc/default/dropbear | cut -d' ' -f1 | tr -d '"' | sort -n | uniq)
     
     # Mostrar el puerto principal
     if [ -n "$main_port" ]; then
