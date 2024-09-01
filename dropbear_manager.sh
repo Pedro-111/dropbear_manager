@@ -133,15 +133,15 @@ create_user() {
     echo -e "${YELLOW}Creando usuario temporal...${NC}"
     read -p "Ingrese el nombre de usuario: " username
     read -p "Ingrese el número de días de validez: " days
-
-    # Crear usuario con shell nula y fecha de expiración
-    $(need_sudo) useradd -m -s /bin/false -e $(date -d "+$days days" +%Y-%m-%d) $username
-
-    # Solicitar y asignar contraseña
-    echo -e "${YELLOW}Ingrese la contraseña para el usuario $username:${NC}"
-    $(need_sudo) passwd $username
     
-    echo -e "${GREEN}Usuario $username creado con éxito. Expira en $days días${NC}"
+    expiry_date=$(date -d "+$days days" +%Y-%m-%d)
+    $(need_sudo) useradd -m -s /bin/false -e "$expiry_date" $username
+    if [ $? -eq 0 ]; then
+        $(need_sudo) passwd $username
+        echo -e "${GREEN}Usuario $username creado con éxito. Expira el $expiry_date${NC}"
+    else
+        echo -e "${RED}Error al crear el usuario $username${NC}"
+    fi
 }
 
 # Función para actualizar el script
@@ -231,16 +231,19 @@ list_users() {
     echo -e "-------\t--------------"
     
     for user in $(awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd); do
-        expiry_date=$($(need_sudo) chage -l $user | grep "Account expires" | cut -d: -f2)
-        if [ "$expiry_date" = " never" ]; then
+        expiry_date=$($(need_sudo) chage -l $user | grep "Account expires" | cut -d: -f2 | xargs)
+        if [ "$expiry_date" = "never" ]; then
             days_left="Nunca expira"
         else
             current_date=$(date +%s)
-            expiry_date_seconds=$(date -d "$expiry_date" +%s)
-            days_left=$(( (expiry_date_seconds - current_date) / 86400 ))
-            
-            if [ $days_left -lt 0 ]; then
-                days_left="Expirado"
+            expiry_date_seconds=$(date -d "$expiry_date" +%s 2>/dev/null)
+            if [ $? -eq 0 ]; then
+                days_left=$(( (expiry_date_seconds - current_date) / 86400 ))
+                if [ $days_left -lt 0 ]; then
+                    days_left="Expirado"
+                fi
+            else
+                days_left="Fecha inválida"
             fi
         fi
         echo -e "$user\t$days_left"
