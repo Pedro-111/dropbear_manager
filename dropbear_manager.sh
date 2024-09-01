@@ -33,7 +33,10 @@ install_dropbear() {
     echo -e "${YELLOW}Instalando Dropbear...${NC}"
     $(need_sudo) apt-get update
     $(need_sudo) apt-get install -y dropbear
-    
+    if ! command -v dropbear &> /dev/null; then
+        echo -e "${RED}Error: La instalación de Dropbear falló${NC}"
+        exit 1
+    fi
     clean_dropbear_config
     
     echo -e "${YELLOW}Configurando puerto principal para Dropbear...${NC}"
@@ -81,6 +84,14 @@ restart_dropbear() {
     else
         echo -e "${GREEN}Dropbear reiniciado con éxito${NC}"
     fi
+    sleep 2
+    if ! pgrep -x "dropbear" > /dev/null; then
+        echo -e "${RED}Error: Dropbear no se está ejecutando después del reinicio${NC}"
+        echo -e "${YELLOW}Mostrando logs:${NC}"
+        $(need_sudo) journalctl -xeu dropbear.service
+    else
+        echo -e "${GREEN}Dropbear reiniciado con éxito${NC}"
+    fi
 }
 
 clean_dropbear_config() {
@@ -121,11 +132,20 @@ EOF
 }
 # Función para mostrar puertos en uso
 show_ports() {
+    # Verificar si Dropbear está instalado
+    if ! command -v dropbear &> /dev/null; then
+        echo -e "${YELLOW}Dropbear no está instalado. Por favor, instálelo primero.${NC}"
+        exit 1
+    fi
     echo -e "${BLUE}Puertos Dropbear en uso:${NC}"
     echo -e "PORT\tSTATE"
-    netstat -tln | grep dropbear | awk '{print $4}' | cut -d':' -f2 | sort -n | uniq | while read port; do
+    ss -tuln | grep dropbear | awk '{print $5}' | cut -d':' -f2 | sort -n | uniq | while read port; do
         echo -e "$port\tOPEN"
     done
+    
+    if [ -z "$(ss -tuln | grep dropbear)" ]; then
+        echo -e "${YELLOW}No se encontraron puertos activos para Dropbear${NC}"
+    fi
 }
 
 # Función para crear usuarios temporales
