@@ -197,18 +197,24 @@ show_ports() {
 
 # Función para crear usuarios temporales
 create_user() {
-    echo -e "${YELLOW}Creando usuario temporal...${NC}"
+    echo "Creando usuario temporal..."
     read -p "Ingrese el nombre de usuario: " username
-    read -p "Ingrese el número de días de validez: " days
+    read -p "Ingrese el número de días de validez: " days_valid
     
-    expiry_date=$(date -d "+$days days" +%Y-%m-%d)
-    $(need_sudo) useradd -m -s /bin/false -e "$expiry_date" $username
-    if [ $? -eq 0 ]; then
-        $(need_sudo) passwd $username
-        echo -e "${GREEN}Usuario $username creado con éxito. Expira el $expiry_date${NC}"
+    # Verificar si el usuario ya existe
+    if id "$username" &>/dev/null; then
+        echo "El usuario «$username» ya existe. Actualizando la fecha de expiración y contraseña..."
     else
-        echo -e "${RED}Error al crear el usuario $username${NC}"
+        # Crear el usuario con la fecha de expiración específica
+        sudo useradd -m -e $(date -d "$days_valid days" +%Y-%m-%d) "$username"
     fi
+    
+    # Establecer la contraseña del usuario
+    sudo passwd "$username"
+    
+    # Verificar y mostrar la fecha de expiración
+    expire_date=$(sudo chage -l "$username" | grep "Account expires" | awk -F': ' '{ print $2 }')
+    echo "Usuario $username creado con éxito. Expira el $expire_date"
 }
 
 # Función para actualizar el script
