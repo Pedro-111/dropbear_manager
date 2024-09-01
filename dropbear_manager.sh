@@ -95,9 +95,9 @@ close_port() {
     echo -e "${YELLOW}Cerrando puerto para Dropbear...${NC}"
     read -p "Ingrese el puerto que desea cerrar: " port
     
-    # Verificar si el puerto está en uso por Dropbear
-    if ! netstat -tuln | grep dropbear | grep ":$port " > /dev/null; then
-        echo -e "${RED}El puerto $port no está en uso por Dropbear${NC}"
+    # Verificar si el puerto está configurado
+    if ! grep -qE "DROPBEAR_PORT=$port|DROPBEAR_EXTRA_ARGS=.*-p $port" /etc/default/dropbear; then
+        echo -e "${RED}El puerto $port no está configurado para Dropbear${NC}"
         return
     fi
     
@@ -109,14 +109,15 @@ close_port() {
     if [ "$current_port" = "$port" ]; then
         # Si es el puerto principal, lo cambiamos a un valor vacío
         $(need_sudo) sed -i "s/^DROPBEAR_PORT=.*/DROPBEAR_PORT=/" /etc/default/dropbear
+        echo -e "${GREEN}Puerto principal $port cerrado exitosamente${NC}"
     else
         # Si es un puerto adicional, lo removemos de DROPBEAR_EXTRA_ARGS
-        new_args=$(echo $current_args | sed "s/-p $port//g")
+        new_args=$(echo $current_args | sed "s/ -p $port//g")
         $(need_sudo) sed -i "s/^DROPBEAR_EXTRA_ARGS=.*/DROPBEAR_EXTRA_ARGS=\"$new_args\"/" /etc/default/dropbear
+        echo -e "${GREEN}Puerto adicional $port cerrado exitosamente${NC}"
     fi
     
     restart_dropbear
-    echo -e "${GREEN}Puerto $port cerrado exitosamente${NC}"
 }
 restart_dropbear() {
     echo -e "${YELLOW}Reiniciando Dropbear...${NC}"
