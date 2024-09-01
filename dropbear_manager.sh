@@ -98,7 +98,7 @@ close_port() {
     if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
         echo -e "${RED}Puerto inválido. Debe ser un número entre 1 y 65535.${NC}"
         return
-    }
+    fi
     
     # Verificar si el puerto está configurado
     if ! grep -qE "DROPBEAR_PORT=$port|DROPBEAR_EXTRA_ARGS=.*-p $port" /etc/default/dropbear; then
