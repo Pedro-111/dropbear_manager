@@ -150,7 +150,7 @@ EOF
     echo -e "${GREEN}Configuración de Dropbear limpiada y reiniciada${NC}"
 }
 
-# Función para mostrar puertos en uso
+# Función para mostrar puertos en uso según la configuración de Dropbear
 show_ports() {
     # Verificar si Dropbear está instalado
     if ! command -v dropbear &> /dev/null; then
@@ -158,21 +158,39 @@ show_ports() {
         exit 1
     fi
     
-    echo -e "${BLUE}Puertos Dropbear en uso:${NC}"
+    # Verificar si el archivo de configuración existe
+    if [ ! -f /etc/default/dropbear ]; then
+        echo -e "${RED}El archivo de configuración de Dropbear no se encontró.${NC}"
+        exit 1
+    fi
     
-    # Obtener los puertos usados por Dropbear
-    ports=$(ss -tuln | grep dropbear | awk '{print $5}' | cut -d':' -f2 | sort -n | uniq)
+    echo -e "${BLUE}Puertos Dropbear configurados:${NC}"
+    echo -e "PORT\tSTATE"
 
-    # Verificar si hay puertos en uso
-    if [ -z "$ports" ]; then
-        echo -e "${YELLOW}No se encontraron puertos activos para Dropbear${NC}"
-    else
-        echo -e "PORT\tSTATE"
-        echo "$ports" | while read port; do
-            echo -e "$port\tOPEN"
+    # Extraer el puerto principal
+    main_port=$(grep -oP '^DROPBEAR_PORT=\K[0-9]+' /etc/default/dropbear)
+    
+    # Extraer los puertos adicionales de DROPBEAR_EXTRA_ARGS
+    extra_ports=$(grep -oP 'DROPBEAR_EXTRA_ARGS="[^"]*"' /etc/default/dropbear | grep -oP '-p \K[0-9]+' | sort -n | uniq)
+    
+    # Mostrar el puerto principal
+    if [ -n "$main_port" ]; then
+        echo -e "$main_port\tCONFIGURED"
+    fi
+    
+    # Mostrar los puertos adicionales
+    if [ -n "$extra_ports" ]; then
+        echo "$extra_ports" | while read port; do
+            echo -e "$port\tCONFIGURED"
         done
     fi
+    
+    # Si no se encontraron puertos, mostrar mensaje
+    if [ -z "$main_port" ] && [ -z "$extra_ports" ]; then
+        echo -e "${YELLOW}No se encontraron puertos configurados para Dropbear.${NC}"
+    fi
 }
+
 
 # Función para crear usuarios temporales
 create_user() {
