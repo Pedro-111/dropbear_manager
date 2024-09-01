@@ -288,8 +288,22 @@ uninstall() {
     read -p "¿Desea desinstalar el script? (s/n): " uninstall_script
     if [[ "$uninstall_script" =~ ^[Ss]$ ]]; then
         echo -e "${RED}Desinstalando el script...${NC}"
-        rm "$0"
-        echo -e "${GREEN}Script eliminado con éxito${NC}"
+        
+        # Eliminar el script
+        if [ -f "$0" ]; then
+            rm "$0"
+            echo -e "${GREEN}Script eliminado con éxito${NC}"
+        else
+            echo -e "${RED}No se pudo encontrar el script para eliminar${NC}"
+        fi
+        
+        # Eliminar el alias
+        sed -i '/alias dropbear-manager=/d' "$HOME/.bashrc"
+        
+        # Eliminar la entrada del PATH
+        sed -i '/export PATH=.*\.local\/bin/d' "$HOME/.bashrc"
+        
+        echo -e "${GREEN}Alias y entrada del PATH eliminados${NC}"
     fi
     
     # Opción para desinstalar Dropbear
@@ -297,20 +311,35 @@ uninstall() {
     if [[ "$uninstall_dropbear" =~ ^[Ss]$ ]]; then
         echo -e "${RED}Desinstalando Dropbear...${NC}"
         $(need_sudo) apt-get remove --purge -y dropbear
+        $(need_sudo) apt-get autoremove -y
+        $(need_sudo) rm -rf /etc/dropbear
         echo -e "${GREEN}Dropbear desinstalado con éxito${NC}"
+        
+        # Eliminar la configuración de Dropbear
+        if [ -f "/etc/default/dropbear" ]; then
+            $(need_sudo) rm /etc/default/dropbear
+            echo -e "${GREEN}Configuración de Dropbear eliminada${NC}"
+        fi
     fi
     
     # Si ambos fueron desinstalados, salir del script
     if [[ "$uninstall_script" =~ ^[Ss]$ ]] && [[ "$uninstall_dropbear" =~ ^[Ss]$ ]]; then
         echo -e "${YELLOW}Desinstalación completa. Saliendo...${NC}"
+        # Eliminar el directorio de instalación si está vacío
+        rmdir --ignore-fail-on-non-empty "$HOME/.local/bin"
+        source "$HOME/.bashrc"
         exit 0
     elif [[ "$uninstall_script" =~ ^[Ss]$ ]]; then
         echo -e "${YELLOW}Script desinstalado. Saliendo...${NC}"
+        # Eliminar el directorio de instalación si está vacío
+        rmdir --ignore-fail-on-non-empty "$HOME/.local/bin"
+        source "$HOME/.bashrc"
         exit 0
     fi
     
     # Si solo se desinstaló Dropbear, volver al menú principal
     echo -e "${YELLOW}Volviendo al menú principal...${NC}"
+    source "$HOME/.bashrc"
 }
 manage_users() {
     while true; do
