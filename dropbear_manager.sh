@@ -293,27 +293,27 @@ create_user() {
 }
 
 list_users() {
-    echo -e "${YELLOW}Lista de usuarios creados y días restantes:${NC}"
-    echo -e "USUARIO\tDÍAS RESTANTES"
-    echo -e "-------\t--------------"
+    echo -e "USUARIO\t\tDÍAS RESTANTES"
+    echo -e "-------\t\t--------------"
     
-    for user in $(awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd); do
-        expiry_date=$($(need_sudo) chage -l $user | grep "Account expires" | cut -d: -f2 | xargs)
-        if [ "$expiry_date" = "never" ]; then
+    for user in $(awk -F':' '{ print $1 }' /etc/passwd); do
+        # Verificar si el usuario tiene una fecha de expiración
+        expire_date=$(chage -l $user | grep "Account expires" | awk -F': ' '{ print $2 }')
+        
+        if [ "$expire_date" == "never" ]; then
             days_left="Nunca expira"
         else
-            current_date=$(date +%s)
-            expiry_date_seconds=$(date -d "$expiry_date" +%s 2>/dev/null)
-            if [ $? -eq 0 ]; then
-                days_left=$(( (expiry_date_seconds - current_date) / 86400 ))
-                if [ $days_left -lt 0 ]; then
-                    days_left="Expirado"
-                fi
-            else
-                days_left="Fecha inválida"
+            expire_timestamp=$(date -d "$expire_date" +%s)
+            current_timestamp=$(date +%s)
+            days_left=$(( ($expire_timestamp - $current_timestamp) / 86400 ))
+
+            if [ "$days_left" -lt "0" ]; then
+                days_left="Expirado"
             fi
         fi
-        echo -e "$user\t$days_left"
+        
+        # Mostrar el usuario y los días restantes
+        echo -e "$user\t\t$days_left"
     done
 }
 
