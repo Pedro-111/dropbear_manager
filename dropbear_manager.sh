@@ -47,20 +47,26 @@ install_dropbear() {
     clean_dropbear_config
     
     echo -e "${YELLOW}Configurando puerto principal para Dropbear...${NC}"
-    read -p "Ingrese el puerto principal para Dropbear (no use el puerto 22): " dropbear_port
-    if netstat -tuln | grep ":$dropbear_port " > /dev/null; then
-        echo "El puerto $dropbear_port ya está en uso por otro proceso. Por favor, elija otro puerto."
-        return
-    fi
-    while [ "$dropbear_port" = "22" ]; do
-        echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
+    
+    # Bucle para seguir pidiendo un puerto hasta que sea válido
+    while true; do
         read -p "Ingrese el puerto principal para Dropbear (no use el puerto 22): " dropbear_port
+    
+        # Verificar si el puerto está en uso
+        if netstat -tuln | grep ":$dropbear_port " > /dev/null; then
+            echo "El puerto $dropbear_port ya está en uso por otro proceso. Por favor, elija otro puerto."
+        elif [ "$dropbear_port" = "22" ]; then
+            echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
+        else
+            break
+        fi
     done
     
     # Modificar la configuración de Dropbear
     $(need_sudo) sed -i "s/^DROPBEAR_PORT=/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
     
     restart_dropbear
+
 }
 
 open_ports() {
