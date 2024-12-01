@@ -29,15 +29,15 @@ check_dependencies() {
 
 check_dependencies
 
-# Función para validar la configuración de Dropbear
 validate_dropbear_config() {
     if ! sh -n /etc/default/dropbear; then
-        echo -e "\${RED}Error en la configuración de Dropbear. Corrigiendo...\${NC}"
+        echo -e "${RED}Error en la configuración de Dropbear. Corrigiendo...${NC}"
         # Eliminar cualquier línea que comience con un número
-        \$(need_sudo) sed -i '/^[0-9]/d' /etc/default/dropbear
+        $(need_sudo) sed -i '/^[0-9]/d' /etc/default/dropbear
         echo -e "${GREEN}Configuración corregida${NC}"
     fi
 }
+
 
 install_dropbear() {
     echo -e "${YELLOW}Instalando Dropbear...${NC}"
