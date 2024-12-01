@@ -9,13 +9,13 @@ NC='\033[0m' # No Color
 
 # Verificar si se está ejecutando como root
 if [ "$(id -u)" != "0" ]; then
-    echo -e "${RED}Este script debe ser ejecutado como root\${NC}"
+    echo -e "${RED}Este script debe ser ejecutado como root${NC}"
     exit 1
 fi
 
 # Función para verificar si un comando necesita sudo
 need_sudo() {
-    if [ "\$(id -u)" != "0" ]; then
+    if [ "$(id -u)" != "0" ]; then
         echo "sudo"
     fi
 }
@@ -29,6 +29,7 @@ check_dependencies() {
 
 check_dependencies
 
+# Función para validar la configuración de Dropbear
 validate_dropbear_config() {
     if ! sh -n /etc/default/dropbear; then
         echo -e "${RED}Error en la configuración de Dropbear. Corrigiendo...${NC}"
@@ -37,7 +38,6 @@ validate_dropbear_config() {
         echo -e "${GREEN}Configuración corregida${NC}"
     fi
 }
-
 
 install_dropbear() {
     echo -e "${YELLOW}Instalando Dropbear...${NC}"
@@ -56,55 +56,55 @@ install_dropbear() {
         read -p "Ingrese el puerto principal para Dropbear (no use el puerto 22): " dropbear_port
 
         # Verificar si el puerto está en uso
-        if netstat -tuln | grep ":\$dropbear_port " > /dev/null; then
-            echo "El puerto \$dropbear_port ya está en uso por otro proceso. Por favor, elija otro puerto."
+        if netstat -tuln | grep ":$dropbear_port " > /dev/null; then
+            echo "El puerto $dropbear_port ya está en uso por otro proceso. Por favor, elija otro puerto."
         elif [ "$dropbear_port" = "22" ]; then
-            echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.\${NC}"
+            echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
         else
             break
         fi
     done
 
     # Modificar la configuración de Dropbear
-    \$(need_sudo) sed -i "s/^DROPBEAR_PORT=/DROPBEAR_PORT=\$dropbear_port/" /etc/default/dropbear
+    $(need_sudo) sed -i "s/^DROPBEAR_PORT=/DROPBEAR_PORT=$dropbear_port/" /etc/default/dropbear
 
     restart_dropbear
 }
 
 open_ports() {
-    echo -e "\${YELLOW}Abriendo puertos adicionales para Dropbear...\${NC}"
+    echo -e "${YELLOW}Abriendo puertos adicionales para Dropbear...${NC}"
     read -p "Ingrese el puerto adicional que desea abrir: " port
-    if netstat -tuln | grep ":\$port " > /dev/null; then
-        echo "El puerto \$port ya está en uso por otro proceso. Por favor, elija otro puerto."
+    if netstat -tuln | grep ":$port " > /dev/null; then
+        echo "El puerto $port ya está en uso por otro proceso. Por favor, elija otro puerto."
         return
     fi
     while [ "$port" = "22" ]; do
-        echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.\${NC}"
+        echo -e "${RED}El puerto 22 no está permitido. Por favor, elija otro puerto.${NC}"
         read -p "Ingrese el puerto adicional que desea abrir: " port
     done
 
     if lsof -i :$port > /dev/null; then
         echo -e "${RED}El puerto $port ya está en uso${NC}"
     else
-        current_args=\$(grep "^DROPBEAR_EXTRA_ARGS=" /etc/default/dropbear | cut -d'"' -f2)
-        new_args="\$current_args -p $port"
-        $(need_sudo) sed -i "s/^DROPBEAR_EXTRA_ARGS=.*/DROPBEAR_EXTRA_ARGS=\"\$new_args\"/" /etc/default/dropbear
+        current_args=$(grep "^DROPBEAR_EXTRA_ARGS=" /etc/default/dropbear | cut -d'"' -f2)
+        new_args="$current_args -p $port"
+        $(need_sudo) sed -i "s/^DROPBEAR_EXTRA_ARGS=.*/DROPBEAR_EXTRA_ARGS=\"$new_args\"/" /etc/default/dropbear
 
         restart_dropbear
     fi
 }
 
 close_port() {
-    echo -e "\${YELLOW}Cerrando puerto para Dropbear...\${NC}"
+    echo -e "${YELLOW}Cerrando puerto para Dropbear...${NC}"
     read -p "Ingrese el puerto que desea cerrar: " port
 
-    if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "\$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
-        echo -e "${RED}Puerto inválido. Debe ser un número entre 1 y 65535.\${NC}"
+    if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+        echo -e "${RED}Puerto inválido. Debe ser un número entre 1 y 65535.${NC}"
         return
     fi
 
     # Verificar si el puerto está configurado
-    if ! grep -qE "DROPBEAR_PORT=\$port|DROPBEAR_EXTRA_ARGS=.*-p $port" /etc/default/dropbear; then
+    if ! grep -qE "DROPBEAR_PORT=$port|DROPBEAR_EXTRA_ARGS=.*-p $port" /etc/default/dropbear; then
         echo -e "${RED}El puerto $port no está configurado para Dropbear${NC}"
         return
     fi
@@ -113,13 +113,13 @@ close_port() {
     current_port=$(grep "^DROPBEAR_PORT=" /etc/default/dropbear | cut -d'=' -f2)
     current_args=$(grep "^DROPBEAR_EXTRA_ARGS=" /etc/default/dropbear | cut -d'"' -f2)
 
-    if [ "\$current_port" = "$port" ]; then
+    if [ "$current_port" = "$port" ]; then
         echo -e "${RED}El puerto $port es el puerto principal de Dropbear y no se puede cerrar.${NC}"
         read -p "¿Desea actualizar el puerto principal? (s/n): " choice
-        if [ "\$choice" = "s" ]; then
+        if [ "$choice" = "s" ]; then
             read -p "Ingrese el nuevo puerto principal: " new_port
 
-            if ! [[ "$new_port" =~ ^[0-9]+$ ]] || [ "\$new_port" -lt 1 ] || [ "$new_port" -gt 65535 ]; then
+            if ! [[ "$new_port" =~ ^[0-9]+$ ]] || [ "$new_port" -lt 1 ] || [ "$new_port" -gt 65535 ]; then
                 echo -e "${RED}Nuevo puerto inválido. Debe ser un número entre 1 y 65535.${NC}"
                 return
             fi
@@ -131,7 +131,7 @@ close_port() {
         return
     else
         # Si es un puerto adicional, lo removemos de DROPBEAR_EXTRA_ARGS
-        new_args=\$(echo \$current_args | sed "s/-p $port//g")
+        new_args=$(echo $current_args | sed "s/-p $port//g")
         $(need_sudo) sed -i "s/^DROPBEAR_EXTRA_ARGS=.*/DROPBEAR_EXTRA_ARGS=\"$new_args\"/" /etc/default/dropbear
         echo -e "${GREEN}Puerto adicional $port cerrado exitosamente${NC}"
     fi
@@ -156,7 +156,7 @@ restart_dropbear() {
         echo -e "${YELLOW}Mostrando logs:${NC}"
         $(need_sudo) journalctl -xeu dropbear.service
     else
-        echo -e "${GREEN}Dropbear reiniciado con éxito\${NC}"
+        echo -e "${GREEN}Dropbear reiniciado con éxito${NC}"
     fi
 }
 
@@ -215,47 +215,47 @@ show_ports() {
     echo -e "PORT\tSTATE"
 
     # Extraer el puerto principal
-    main_port=\$(awk -F= '/^DROPBEAR_PORT=/ {print \$2}' /etc/default/dropbear)
+    main_port=$(awk -F= '/^DROPBEAR_PORT=/ {print $2}' /etc/default/dropbear)
 
     # Extraer los puertos adicionales de DROPBEAR_EXTRA_ARGS
-    extra_ports=\$(awk -F'-p ' '/DROPBEAR_EXTRA_ARGS=/ {
+    extra_ports=$(awk -F'-p ' '/DROPBEAR_EXTRA_ARGS=/ {
         for (i=2; i<=NF; i++) {
-            print \$i
+            print $i
         }
     }' /etc/default/dropbear | cut -d' ' -f1 | tr -d '"' | sort -n | uniq)
 
     # Mostrar el puerto principal
-    if [ -n "\$main_port" ]; then
-        echo -e "\$main_port\tCONFIGURED"
+    if [ -n "$main_port" ]; then
+        echo -e "$main_port\tCONFIGURED"
     fi
 
     # Mostrar los puertos adicionales
-    if [ -n "\$extra_ports" ]; then
-        echo "\$extra_ports" | while read port; do
-            echo -e "\$port\tCONFIGURED"
+    if [ -n "$extra_ports" ]; then
+        echo "$extra_ports" | while read port; do
+            echo -e "$port\tCONFIGURED"
         done
     fi
 
     # Si no se encontraron puertos, mostrar mensaje
-    if [ -z "\$main_port" ] && [ -z "$extra_ports" ]; then
-        echo -e "${YELLOW}No se encontraron puertos configurados para Dropbear.\${NC}"
+    if [ -z "$main_port" ] && [ -z "$extra_ports" ]; then
+        echo -e "${YELLOW}No se encontraron puertos configurados para Dropbear.${NC}"
     fi
 }
 
 # Función para crear usuarios temporales
 create_user() {
-    echo -e "\${YELLOW}Creando usuario temporal...${NC}"
+    echo -e "${YELLOW}Creando usuario temporal...${NC}"
     read -p "Ingrese el nombre de usuario: " username
     read -p "Ingrese el número de días de validez: " days
 
-    $(need_sudo) useradd -m -s /bin/false -e \$(date -d "+\$days days" +%Y-%m-%d) $username
+    $(need_sudo) useradd -m -s /bin/false -e $(date -d "+$days days" +%Y-%m-%d) $username
     $(need_sudo) passwd $username
-    echo -e "${GREEN}Usuario \$username creado con éxito. Expira en $days días${NC}"
+    echo -e "${GREEN}Usuario $username creado con éxito. Expira en $days días${NC}"
 }
 
 list_users() {
     echo -e "${YELLOW}Lista de usuarios creados:${NC}"
-    \$(need_sudo) awk -F: '\$3 >= 1000 && \$1 != "nobody" {print \$1}' /etc/passwd
+    $(need_sudo) awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd
 }
 
 # Menu de gestion de usuarios
@@ -272,7 +272,7 @@ manage_users_menu() {
     echo -n "Seleccione una opción: "
     read option
 
-    case \$option in
+    case $option in
         1) create_user ;;
         2) list_users ;;
         3) extend_user_days ;;
@@ -288,12 +288,12 @@ extend_user_days() {
     read -p "Ingrese el nombre de usuario: " username
     read -p "Ingrese el número de días a añadir: " days
 
-    if id "\$username" >/dev/null 2>&1; then
-        new_expiry=\$(date -d "$($(need_sudo) chage -l \$username | grep 'Account expires' | cut -d: -f2) +$days days" +%Y-%m-%d)
-        $(need_sudo) chage -E \$new_expiry $username
-        echo -e "${GREEN}Se han añadido \$days días a la cuenta de $username${NC}"
+    if id "$username" >/dev/null 2>&1; then
+        new_expiry=$(date -d "$($(need_sudo) chage -l $username | grep 'Account expires' | cut -d: -f2) +$days days" +%Y-%m-%d)
+        $(need_sudo) chage -E $new_expiry $username
+        echo -e "${GREEN}Se han añadido $days días a la cuenta de $username${NC}"
     else
-        echo -e "\${RED}El usuario $username no existe${NC}"
+        echo -e "${RED}El usuario $username no existe${NC}"
     fi
 }
 
@@ -301,20 +301,20 @@ reduce_user_days() {
     read -p "Ingrese el nombre de usuario: " username
     read -p "Ingrese el número de días a reducir: " days
 
-    if id "\$username" >/dev/null 2>&1; then
-        new_expiry=\$(date -d "$($(need_sudo) chage -l \$username | grep 'Account expires' | cut -d: -f2) -$days days" +%Y-%m-%d)
-        $(need_sudo) chage -E \$new_expiry $username
-        echo -e "${GREEN}Se han reducido \$days días de la cuenta de $username${NC}"
+    if id "$username" >/dev/null 2>&1; then
+        new_expiry=$(date -d "$($(need_sudo) chage -l $username | grep 'Account expires' | cut -d: -f2) -$days days" +%Y-%m-%d)
+        $(need_sudo) chage -E $new_expiry $username
+        echo -e "${GREEN}Se han reducido $days días de la cuenta de $username${NC}"
     else
-        echo -e "\${RED}El usuario $username no existe${NC}"
+        echo -e "${RED}El usuario $username no existe${NC}"
     fi
 }
 
 update_user_password() {
     read -p "Ingrese el nombre de usuario: " username
 
-    if id "\$username" >/dev/null 2>&1; then
-        \$(need_sudo) passwd $username
+    if id "$username" >/dev/null 2>&1; then
+        $(need_sudo) passwd $username
     else
         echo -e "${RED}El usuario $username no existe${NC}"
     fi
@@ -323,11 +323,11 @@ update_user_password() {
 delete_user() {
     read -p "Ingrese el nombre de usuario a eliminar: " username
 
-    if id "\$username" >/dev/null 2>&1; then
-        \$(need_sudo) userdel -r $username
+    if id "$username" >/dev/null 2>&1; then
+        $(need_sudo) userdel -r $username
         echo -e "${GREEN}Usuario $username eliminado con éxito${NC}"
     else
-        echo -e "\${RED}El usuario $username no existe${NC}"
+        echo -e "${RED}El usuario $username no existe${NC}"
     fi
 }
 
@@ -339,17 +339,17 @@ update_script() {
     SCRIPT_URL="https://raw.githubusercontent.com/Pedro-111/dropbear_manager/master/dropbear_manager.sh"
 
     # Nombre del script actual
-    CURRENT_SCRIPT="\$0"
+    CURRENT_SCRIPT="$0"
 
     # Descargar el nuevo script
     if curl -s "$SCRIPT_URL" -o "${CURRENT_SCRIPT}.tmp"; then
         # Verificar si la descarga fue exitosa
-        if [ -s "\${CURRENT_SCRIPT}.tmp" ]; then
+        if [ -s "${CURRENT_SCRIPT}.tmp" ]; then
             # Hacer el nuevo script ejecutable
-            chmod +x "\${CURRENT_SCRIPT}.tmp"
+            chmod +x "${CURRENT_SCRIPT}.tmp"
 
             # Reemplazar el script actual con el nuevo
-            mv "\${CURRENT_SCRIPT}.tmp" "$CURRENT_SCRIPT"
+            mv "${CURRENT_SCRIPT}.tmp" "$CURRENT_SCRIPT"
 
             echo -e "${GREEN}Script actualizado con éxito. Por favor, reinicie el script.${NC}"
             exit 0
@@ -372,20 +372,20 @@ uninstall() {
         echo -e "${RED}Desinstalando el script...${NC}"
 
         # Eliminar el script
-        if [ -f "\$0" ]; then
+        if [ -f "$0" ]; then
             rm "$0"
-            echo -e "${GREEN}Script eliminado con éxito\${NC}"
+            echo -e "${GREEN}Script eliminado con éxito${NC}"
         else
             echo -e "${RED}No se pudo encontrar el script para eliminar${NC}"
         fi
 
         # Eliminar el alias
-        sed -i '/alias dropbear-manager=/d' "\$HOME/.bashrc"
+        sed -i '/alias dropbear-manager=/d' "$HOME/.bashrc"
 
         # Eliminar la entrada del PATH
         sed -i '/export PATH=.*\.local\/bin/d' "$HOME/.bashrc"
 
-        echo -e "${GREEN}Alias y entrada del PATH eliminados\${NC}"
+        echo -e "${GREEN}Alias y entrada del PATH eliminados${NC}"
     fi
 
     # Opción para desinstalar Dropbear
@@ -395,12 +395,12 @@ uninstall() {
         $(need_sudo) apt-get remove --purge -y dropbear
         $(need_sudo) apt-get autoremove -y
         $(need_sudo) rm -rf /etc/dropbear
-        echo -e "${GREEN}Dropbear desinstalado con éxito\${NC}"
+        echo -e "${GREEN}Dropbear desinstalado con éxito${NC}"
 
         # Eliminar la configuración de Dropbear
         if [ -f "/etc/default/dropbear" ]; then
             $(need_sudo) rm /etc/default/dropbear
-            echo -e "${GREEN}Configuración de Dropbear eliminada\${NC}"
+            echo -e "${GREEN}Configuración de Dropbear eliminada${NC}"
         fi
     fi
 
@@ -408,25 +408,25 @@ uninstall() {
     if [[ "$uninstall_script" =~ ^[Ss]$ ]] && [[ "$uninstall_dropbear" =~ ^[Ss]$ ]]; then
         echo -e "${YELLOW}Desinstalación completa. Saliendo...${NC}"
         # Eliminar el directorio de instalación si está vacío
-        rmdir --ignore-fail-on-non-empty "\$HOME/.local/bin"
-        source "\$HOME/.bashrc"
+        rmdir --ignore-fail-on-non-empty "$HOME/.local/bin"
+        source "$HOME/.bashrc"
         exit 0
     elif [[ "$uninstall_script" =~ ^[Ss]$ ]]; then
         echo -e "${YELLOW}Script desinstalado. Saliendo...${NC}"
         # Eliminar el directorio de instalación si está vacío
-        rmdir --ignore-fail-on-non-empty "\$HOME/.local/bin"
-        source "\$HOME/.bashrc"
+        rmdir --ignore-fail-on-non-empty "$HOME/.local/bin"
+        source "$HOME/.bashrc"
         exit 0
     fi
 
     # Si solo se desinstaló Dropbear, volver al menú principal
-    echo -e "\${YELLOW}Volviendo al menú principal...\${NC}"
-    source "\$HOME/.bashrc"
+    echo -e "${YELLOW}Volviendo al menú principal...${NC}"
+    source "$HOME/.bashrc"
 }
 
 # Función para habilitar la depuración en Dropbear
 enable_debugging() {
-    echo -e "\${YELLOW}Habilitando la depuración en Dropbear...${NC}"
+    echo -e "${YELLOW}Habilitando la depuración en Dropbear...${NC}"
     $(need_sudo) sed -i 's/^DROPBEAR_EXTRA_ARGS=.*/DROPBEAR_EXTRA_ARGS="-v"/' /etc/default/dropbear
     restart_dropbear
     echo -e "${GREEN}Depuración habilitada. Por favor, revise los logs para más detalles.${NC}"
@@ -438,7 +438,7 @@ verify_and_convert_keys() {
     # Verificar si las claves están en el formato correcto
     if ! grep -q "ssh-rsa" /etc/dropbear/dropbear_rsa_host_key.pub; then
         echo -e "${RED}La clave pública no está en el formato correcto. Convirtiendo...${NC}"
-                # Convertir la clave pública a formato OpenSSH
+        # Convertir la clave pública a formato OpenSSH
         ssh-keygen -i -f /etc/dropbear/dropbear_rsa_host_key.pub > /etc/dropbear/dropbear_rsa_host_key.pub.tmp
         mv /etc/dropbear/dropbear_rsa_host_key.pub.tmp /etc/dropbear/dropbear_rsa_host_key.pub
         echo -e "${GREEN}Clave pública convertida con éxito${NC}"
@@ -489,4 +489,3 @@ while true; do
         *) echo -e "${RED}Opción inválida${NC}" ;;
     esac
 done
-
