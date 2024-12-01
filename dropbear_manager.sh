@@ -495,7 +495,7 @@ while true; do
         2) open_ports ;;
         3) close_port ;;
         4) show_ports ;;
-        5) manage_users ;;
+        5) manage_users_menu ;;
         6) update_script ;;
         7) clean_dropbear_config ;;
         8) uninstall; exit 0 ;;
