@@ -457,6 +457,21 @@ verify_and_convert_keys() {
     fi
 }
 
+# Función para generar claves si no existen
+generate_keys() {
+    echo -e "${YELLOW}Generando claves para Dropbear...${NC}"
+    if [ ! -f /etc/dropbear/dropbear_rsa_host_key ]; then
+        dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key
+    fi
+    if [ ! -f /etc/dropbear/dropbear_dss_host_key ]; then
+        dropbearkey -t dss -f /etc/dropbear/dropbear_dss_host_key
+    fi
+    if [ ! -f /etc/dropbear/dropbear_ecdsa_host_key ]; then
+        dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
+    fi
+    echo -e "${GREEN}Claves generadas con éxito${NC}"
+}
+
 # Menú principal
 while true; do
     echo -e "\n${BLUE}=== Menú de Dropbear ===${NC}"
@@ -470,7 +485,8 @@ while true; do
     echo "8. Desinstalar"
     echo "9. Habilitar depuración"
     echo "10. Verificar y convertir claves"
-    echo "11. Salir"
+    echo "11. Generar claves"
+    echo "12. Salir"
 
     read -p "Seleccione una opción: " choice
 
@@ -485,7 +501,8 @@ while true; do
         8) uninstall; exit 0 ;;
         9) enable_debugging ;;
         10) verify_and_convert_keys ;;
-        11) exit 0 ;;
+        11) generate_keys ;;
+        12) exit 0 ;;
         *) echo -e "${RED}Opción inválida${NC}" ;;
     esac
 done
