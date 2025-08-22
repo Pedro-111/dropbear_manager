@@ -31,7 +31,7 @@ Dropbear Manager es un script de bash diseñado para simplificar la gestión de 
 ### Método Automático
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Pedro-111/dropbear_manager/master/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Pedro-111/dropbear_manager/master/install.sh | sudo bash
 ```
 
 ### Método Manual
